@@ -1,0 +1,54 @@
+name: Extract FRP source archive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - EXTRACT-FRP-NOW
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and extract archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, stat, zipfile
+          archive = pathlib.Path('frp-dev.zip')
+          with zipfile.ZipFile(archive) as z:
+              bad = []
+              for item in z.infolist():
+                  p = pathlib.PurePosixPath(item.filename)
+                  mode = item.external_attr >> 16
+                  if p.is_absolute() or '..' in p.parts or not item.filename.startswith('frp-dev/') or stat.S_ISLNK(mode):
+                      bad.append(item.filename)
+              if bad:
+                  raise SystemExit('Unsafe archive paths or links: ' + repr(bad[:10]))
+              z.extractall(pathlib.Path(__import__('os').environ['RUNNER_TEMP']) / 'frp-extract')
+          PY
+          mkdir -p archives
+          mv frp-dev.zip archives/frp-dev.zip
+          cp -a "$RUNNER_TEMP/frp-extract/frp-dev/." .
+          cat > SOURCE_ORIGIN.md <<'EOF'
+          # Source provenance
+
+          This repository contains an extracted source snapshot of [fatedier/frp](https://github.com/fatedier/frp).
+
+          The upstream project is a general-purpose reverse proxy. The supplied source archive did not include a verifiable upstream commit identifier, so this copy should be treated as a snapshot rather than a pinned upstream revision.
+
+          The upstream LICENSE file is retained. Review that license and preserve its notices when redistributing or modifying the source.
+          EOF
+          rm -f EXTRACT-FRP-NOW .github/workflows/extract-frp-archive.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "[skip ci] Extract FRP source tree"
+            git push
+          fi
