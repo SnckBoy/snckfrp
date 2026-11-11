@@ -1,1 +1,1 @@
-Temporary trigger for the one-time source extraction workflow. This file is removed by the workflow.
+Temporary trigger for the one-time FRP source extraction workflow. Updated after fixing safe handling of the archive's CLAUDE.md symlink entry.
