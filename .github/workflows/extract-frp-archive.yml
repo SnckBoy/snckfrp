@@ -1,6 +1,7 @@
 name: Extract FRP source archive
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
