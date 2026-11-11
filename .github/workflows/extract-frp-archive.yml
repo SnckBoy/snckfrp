@@ -29,6 +29,9 @@ jobs:
                   mode = item.external_attr >> 16
                   if p.is_absolute() or '..' in p.parts or not item.filename.startswith('frp-dev/'):
                       raise SystemExit(f'Unsafe archive path: {item.filename!r}')
+                  if p.parts[:3] == ('frp-dev', '.github', 'workflows'):
+                      print(f'Skipping upstream workflow file: {item.filename}')
+                      continue
                   if stat.S_ISLNK(mode):
                       print(f'Skipping symlink entry: {item.filename}')
                       continue
@@ -46,9 +49,9 @@ jobs:
 
           The supplied archive did not include a verifiable upstream commit identifier, so this copy is a snapshot rather than a pinned upstream revision. The upstream LICENSE file is retained; preserve its notices when redistributing or modifying the source.
 
-          One symlink entry (CLAUDE.md -> AGENTS.md) is omitted from the extraction. Its target file, AGENTS.md, is retained.
+          The archive's GitHub Actions workflow files are not imported; this repository's own workflow configuration is preserved. One symlink entry (CLAUDE.md -> AGENTS.md) is omitted; its target file, AGENTS.md, is retained.
           EOF
-          rm -f EXTRACT-FRP-NOW .github/workflows/extract-frp-archive.yml
+          rm -f EXTRACT-FRP-NOW
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
