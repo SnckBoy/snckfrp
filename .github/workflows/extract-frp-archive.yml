@@ -20,18 +20,21 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import pathlib, stat, zipfile
+          import os, pathlib, stat, zipfile
           archive = pathlib.Path('frp-dev.zip')
+          destination = pathlib.Path(os.environ['RUNNER_TEMP']) / 'frp-extract'
           with zipfile.ZipFile(archive) as z:
-              bad = []
               for item in z.infolist():
                   p = pathlib.PurePosixPath(item.filename)
                   mode = item.external_attr >> 16
-                  if p.is_absolute() or '..' in p.parts or not item.filename.startswith('frp-dev/') or stat.S_ISLNK(mode):
-                      bad.append(item.filename)
-              if bad:
-                  raise SystemExit('Unsafe archive paths or links: ' + repr(bad[:10]))
-              z.extractall(pathlib.Path(__import__('os').environ['RUNNER_TEMP']) / 'frp-extract')
+                  if p.is_absolute() or '..' in p.parts or not item.filename.startswith('frp-dev/'):
+                      raise SystemExit(f'Unsafe archive path: {item.filename!r}')
+                  if stat.S_ISLNK(mode):
+                      print(f'Skipping symlink entry: {item.filename}')
+                      continue
+                  if mode and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                      raise SystemExit(f'Unsupported special file: {item.filename!r}')
+                  z.extract(item, destination)
           PY
           mkdir -p archives
           mv frp-dev.zip archives/frp-dev.zip
@@ -41,9 +44,9 @@ jobs:
 
           This repository contains an extracted source snapshot of [fatedier/frp](https://github.com/fatedier/frp).
 
-          The upstream project is a general-purpose reverse proxy. The supplied source archive did not include a verifiable upstream commit identifier, so this copy should be treated as a snapshot rather than a pinned upstream revision.
+          The supplied archive did not include a verifiable upstream commit identifier, so this copy is a snapshot rather than a pinned upstream revision. The upstream LICENSE file is retained; preserve its notices when redistributing or modifying the source.
 
-          The upstream LICENSE file is retained. Review that license and preserve its notices when redistributing or modifying the source.
+          One symlink entry (CLAUDE.md -> AGENTS.md) is omitted from the extraction. Its target file, AGENTS.md, is retained.
           EOF
           rm -f EXTRACT-FRP-NOW .github/workflows/extract-frp-archive.yml
           git config user.name "github-actions[bot]"
