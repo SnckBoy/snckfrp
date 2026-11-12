@@ -6,6 +6,16 @@
 
 [README](README.md) | [中文文档](README_zh.md)
 
+## SnckFRP management panel
+
+Install the SnckFRP server and web management panel on Ubuntu or Debian:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SnckBoy/snckfrp/main/install.sh | sudo bash
+```
+
+The panel listens on TCP port **8080** and the FRP control server uses TCP port **7000** by default. See [the panel guide](docs/SNCKFRP-PANEL.md) for setup, client configuration, services, and security details.
+
 ## Sponsors
 
 frp is an open source project with its ongoing development made possible entirely by the support of our awesome sponsors. If you'd like to join them, please consider [sponsoring frp's development](https://github.com/sponsors/fatedier).
