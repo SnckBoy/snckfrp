@@ -18,9 +18,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build client and server
-        run: make build
+      - name: Build FRP and SnckFRP panel
+        run: |
+          make build
+          mkdir -p bin
+          go build -trimpath -o bin/snckfrp-panel ./cmd/snckfrp-panel
       - name: Verify binaries
         run: |
           ./bin/frpc --version
           ./bin/frps --version
+          ./bin/snckfrp-panel -h
+      - name: Run SnckFRP panel unit tests
+        run: go test ./cmd/snckfrp-panel/...
