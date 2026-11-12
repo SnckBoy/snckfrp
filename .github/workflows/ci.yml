@@ -28,5 +28,7 @@ jobs:
           ./bin/frpc --version
           ./bin/frps --version
           ./bin/snckfrp-panel -h
+      - name: Vet SnckFRP panel
+        run: go vet ./cmd/snckfrp-panel/...
       - name: Run SnckFRP panel unit tests
         run: go test ./cmd/snckfrp-panel/...
