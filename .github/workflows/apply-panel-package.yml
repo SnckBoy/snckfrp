@@ -1,0 +1,82 @@
+name: Apply SnckFRP panel package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "snckfrp-panel-apply.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate uploaded ZIP
+        run: |
+          test -s snckfrp-panel-implementation.zip
+          unzip -t snckfrp-panel-implementation.zip
+
+      - name: Extract panel files without deleting existing project files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          unzip -q snckfrp-panel-implementation.zip -d "$tmp"
+          install -D -m 0644 "$tmp/package/cmd/snckfrp-panel/main.go" cmd/snckfrp-panel/main.go
+          install -D -m 0644 "$tmp/package/cmd/snckfrp-panel/main_test.go" cmd/snckfrp-panel/main_test.go
+          install -D -m 0644 "$tmp/package/cmd/snckfrp-panel/index.html" cmd/snckfrp-panel/index.html
+          install -D -m 0644 "$tmp/package/docs/SNCKFRP-PANEL.md" docs/SNCKFRP-PANEL.md
+          install -D -m 0755 "$tmp/package/install.sh" install.sh
+          install -D -m 0644 "$tmp/package/.github/workflows/ci.yml" .github/workflows/ci.yml
+          python3 - <<'PY'
+          from pathlib import Path
+          readme = Path("README.md")
+          text = readme.read_text(encoding="utf-8")
+          marker = "## SnckFRP management panel"
+          if marker not in text:
+              section = """## SnckFRP management panel
+
+          Install the SnckFRP server and web management panel on Ubuntu or Debian:
+
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/SnckBoy/snckfrp/main/install.sh | sudo bash
+          ```
+
+          The panel listens on TCP port **8080** and the FRP control server uses TCP port **7000** by default. See [the panel guide](docs/SNCKFRP-PANEL.md) for setup, client configuration, services, and security details.
+
+          """
+              text = text.replace("## Sponsors", section + "## Sponsors", 1)
+              readme.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Verify panel and installer
+        run: |
+          bash -n install.sh
+          go test ./cmd/snckfrp-panel/...
+          go vet ./cmd/snckfrp-panel/...
+          make build
+          ./bin/frpc --version
+          ./bin/frps --version
+
+      - name: Commit extracted files without removing existing files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add install.sh .github/workflows/ci.yml cmd/snckfrp-panel docs/SNCKFRP-PANEL.md README.md
+          if git diff --cached --quiet; then
+            echo "Panel package is already integrated; no commit needed."
+            exit 0
+          fi
+          git commit -m "Add SnckFRP web management panel"
+          git push origin HEAD:main
